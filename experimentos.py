@@ -2,20 +2,22 @@
 Módulo: experimentos.py
 
 Descripción:
-Experimentos numéricos para comparar los métodos de Euler explícito,
-Heun y Runge-Kutta de cuarto orden aplicados al modelo MalSEIRS.
+Experimentos numéricos para comparar Euler explícito, Heun y
+Runge-Kutta de cuarto orden aplicados al modelo MalSEIRS.
 
 Para cada método se estudian:
     - Tamaño de paso h
     - Número de pasos N
     - Aproximación numérica final
     - Error numérico
+    - Orden observado de convergencia
     - Tiempo de ejecución
     - Máximo de infectados I_max
     - Instante t_max del máximo de infección
 
-Compara los tres métodos contra una referencia RK4 y estima su precisión
-al reducir el paso de la referencia a la mitad.
+La solución de referencia se obtiene con RK4 usando una malla fina.
+También se verifica la estabilidad de esa referencia al reducir
+su tamaño de paso a la mitad.
 
 Dependencias:
     - Python 3.x
@@ -63,43 +65,61 @@ H_REF = 0.00125
 # Funciones auxiliares
 
 def numero_pasos(t0, tf, h):
-    """
-    Calcula el número de pasos necesario para utilizar
-    un tamaño de paso h en el intervalo [t0, tf].
-    """
+    """Calcula el número de pasos para un tamaño de paso h."""
 
-    n = int(round((tf - t0) / h))
+    n = int(
+        round(
+            (tf - t0) / h
+        )
+    )
 
-    h_real = (tf - t0) / n
+    h_real = (
+        (tf - t0) / n
+    )
 
-    if not np.isclose(h_real, h):
+    if not np.isclose(
+        h_real,
+        h
+    ):
 
         raise ValueError(
-            f"El tamaño de paso h = {h} no divide exactamente "
+            f"El tamaño de paso h = {h} "
+            f"no divide exactamente "
             f"el intervalo [{t0}, {tf}]."
         )
 
     return n
 
 
-def referencia_en_malla(tv, tv_ref, yv_ref):
+def referencia_en_malla(
+    tv,
+    tv_ref,
+    yv_ref
+):
     """
-    Extrae de la solución de referencia los valores
-    correspondientes a los mismos tiempos de la
-    solución aproximada.
+    Extrae de la referencia los valores correspondientes
+    a los mismos tiempos de la solución aproximada.
     """
 
-    h_ref = tv_ref[1] - tv_ref[0]
+    h_ref = (
+        tv_ref[1]
+        - tv_ref[0]
+    )
 
     indices = np.rint(
-        (tv - tv_ref[0]) / h_ref
+        (tv - tv_ref[0])
+        / h_ref
     ).astype(int)
 
-    if np.any(indices < 0) or np.any(indices >= len(tv_ref)):
+    if np.any(
+        indices < 0
+    ) or np.any(
+        indices >= len(tv_ref)
+    ):
 
         raise ValueError(
-            "La malla solicitada está fuera de la "
-            "solución de referencia."
+            "La malla solicitada está fuera "
+            "de la solución de referencia."
         )
 
     if not np.allclose(
@@ -110,8 +130,9 @@ def referencia_en_malla(tv, tv_ref, yv_ref):
     ):
 
         raise ValueError(
-            "Los tiempos de la aproximación no coinciden "
-            "con los tiempos de la solución de referencia."
+            "Los tiempos de la aproximación "
+            "no coinciden con los tiempos "
+            "de la solución de referencia."
         )
 
     return yv_ref[indices]
@@ -125,20 +146,12 @@ def calcular_metricas(
     metodo,
     error=None
 ):
-    """
-    Calcula las métricas principales de una ejecución.
-    """
-
-    i_max = float(
-        np.max(yv[:, 2])
-    )
+    """Calcula las métricas principales de una ejecución."""
 
     indice_max = int(
-        np.argmax(yv[:, 2])
-    )
-
-    t_max = float(
-        tv[indice_max]
+        np.argmax(
+            yv[:, 2]
+        )
     )
 
     return {
@@ -146,13 +159,26 @@ def calcular_metricas(
         "h": h,
         "N": len(tv) - 1,
         "error": error,
+        "orden_observado": None,
         "tiempo": tiempo,
-        "I_max": i_max,
-        "t_max": t_max,
-        "S_final": float(yv[-1, 0]),
-        "E_final": float(yv[-1, 1]),
-        "I_final": float(yv[-1, 2]),
-        "R_final": float(yv[-1, 3]),
+        "I_max": float(
+            yv[indice_max, 2]
+        ),
+        "t_max": float(
+            tv[indice_max]
+        ),
+        "S_final": float(
+            yv[-1, 0]
+        ),
+        "E_final": float(
+            yv[-1, 1]
+        ),
+        "I_final": float(
+            yv[-1, 2]
+        ),
+        "R_final": float(
+            yv[-1, 3]
+        ),
     }
 
 
@@ -162,12 +188,10 @@ def ejecutar_experimento(
     sistema,
     y0,
     h,
-    tv_ref=None,
-    yv_ref=None
+    tv_ref,
+    yv_ref
 ):
-    """
-    Ejecuta un método numérico para un tamaño de paso h.
-    """
+    """Ejecuta un método para un tamaño de paso h."""
 
     n_pasos = numero_pasos(
         T0,
@@ -183,20 +207,16 @@ def ejecutar_experimento(
         n_pasos
     )
 
-    error = None
+    y_ref_malla = referencia_en_malla(
+        tv,
+        tv_ref,
+        yv_ref
+    )
 
-    if tv_ref is not None and yv_ref is not None:
-
-        y_ref_malla = referencia_en_malla(
-            tv,
-            tv_ref,
-            yv_ref
-        )
-
-        error = calcular_error_infinito(
-            yv,
-            y_ref_malla
-        )
+    error = calcular_error_infinito(
+        yv,
+        y_ref_malla
+    )
 
     metricas = calcular_metricas(
         tv,
@@ -207,7 +227,92 @@ def ejecutar_experimento(
         error
     )
 
-    return tv, yv, metricas
+    return (
+        tv,
+        yv,
+        metricas
+    )
+
+
+def calcular_ordenes_observados(
+    resultados
+):
+    """
+    Calcula el orden observado entre dos refinamientos consecutivos.
+
+    p = log(E1/E2) / log(h1/h2)
+    """
+
+    metodos = sorted(
+        set(
+            resultado["metodo"]
+            for resultado in resultados
+        )
+    )
+
+    for metodo in metodos:
+
+        datos = [
+            resultado
+            for resultado in resultados
+            if resultado["metodo"] == metodo
+        ]
+
+        datos = sorted(
+            datos,
+            key=lambda resultado:
+            resultado["h"],
+            reverse=True
+        )
+
+        datos[0]["orden_observado"] = None
+
+        for i in range(
+            1,
+            len(datos)
+        ):
+
+            error_anterior = (
+                datos[i - 1]["error"]
+            )
+
+            error_actual = (
+                datos[i]["error"]
+            )
+
+            h_anterior = (
+                datos[i - 1]["h"]
+            )
+
+            h_actual = (
+                datos[i]["h"]
+            )
+
+            if (
+                error_anterior is None
+                or error_actual is None
+                or error_anterior <= 0
+                or error_actual <= 0
+            ):
+
+                datos[i][
+                    "orden_observado"
+                ] = None
+
+            else:
+
+                datos[i][
+                    "orden_observado"
+                ] = float(
+                    np.log(
+                        error_anterior
+                        / error_actual
+                    )
+                    / np.log(
+                        h_anterior
+                        / h_actual
+                    )
+                )
 
 
 # Solución numérica de referencia
@@ -217,21 +322,23 @@ def crear_solucion_referencia(
     y0
 ):
     """
-    Genera una solución numérica de referencia mediante
-    RK4 con un tamaño de paso menor a los utilizados
-    en los experimentos.
+    Genera la referencia con RK4 y verifica su estabilidad
+    reduciendo el tamaño de paso a la mitad.
     """
 
-    # Usa una malla fina común para calcular los errores de los tres métodos.
     n_ref = numero_pasos(
         T0,
         TF,
         H_REF
     )
 
-    print("\nSolución numérica de referencia")
+    print(
+        "\nSolución numérica de referencia"
+    )
 
-    print("Método: RK4")
+    print(
+        "Método: RK4"
+    )
 
     print(
         f"h_ref = {H_REF}"
@@ -249,71 +356,132 @@ def crear_solucion_referencia(
         n_ref
     )
 
-    # Cuantifica la sensibilidad de la referencia al refinamiento temporal.
-    tv_fina, yv_fina, _ = rk4_sistema(sistema, T0, TF, y0, 2 * n_ref)
-    y_fina_en_ref = referencia_en_malla(tv_ref, tv_fina, yv_fina)
-    diferencia = calcular_error_infinito(yv_ref, y_fina_en_ref)
-    print(f"Diferencia máxima al reducir el paso a {H_REF / 2:g}: {diferencia:.6e}")
-    return tv_ref, yv_ref
+    tv_fina, yv_fina, _ = rk4_sistema(
+        sistema,
+        T0,
+        TF,
+        y0,
+        2 * n_ref
+    )
+
+    y_fina_en_ref = referencia_en_malla(
+        tv_ref,
+        tv_fina,
+        yv_fina
+    )
+
+    diferencia = calcular_error_infinito(
+        yv_ref,
+        y_fina_en_ref
+    )
+
+    print(
+        f"Diferencia máxima al reducir "
+        f"el paso a {H_REF / 2:g}: "
+        f"{diferencia:.6e}"
+    )
+
+    return (
+        tv_ref,
+        yv_ref
+    )
 
 
-# Tabla principal de resultados
+# Resultados en consola
 
-def imprimir_tabla(resultados):
-    """
-    Imprime la tabla principal de resultados.
-    """
+def imprimir_configuracion(
+    y0
+):
+    """Muestra los datos comunes a todas las ejecuciones."""
 
-    print("\nRESULTADOS DE LOS EXPERIMENTOS\n")
+    print(
+        "\nConfiguración de los experimentos"
+    )
+
+    print(
+        f"Valores iniciales "
+        f"[S(0), E(0), I(0), R(0)]: "
+        f"{y0.tolist()}"
+    )
+
+    print(
+        f"Intervalo de simulación: "
+        f"[{T0}, {TF}]"
+    )
+
+    print(
+        f"Tamaños de paso utilizados: "
+        f"{H_VALORES}"
+    )
+
+
+def imprimir_tabla(
+    resultados
+):
+    """Imprime la tabla principal de resultados."""
+
+    print(
+        "\nRESULTADOS DE LOS EXPERIMENTOS\n"
+    )
 
     encabezado = (
         f"{'Método':<18}"
-        f"{'h':<12}"
-        f"{'N':<10}"
-        f"{'Error':<18}"
-        f"{'Tiempo (s)':<16}"
-        f"{'I_max':<15}"
+        f"{'h':<11}"
+        f"{'N':<9}"
+        f"{'Error':<17}"
+        f"{'p obs.':<11}"
+        f"{'Tiempo (s)':<15}"
+        f"{'I_max':<14}"
         f"{'t_max':<12}"
     )
 
-    print(encabezado)
+    print(
+        encabezado
+    )
 
-    print("-" * 105)
+    print(
+        "-" * 107
+    )
 
     for resultado in resultados:
 
-        if resultado["error"] is None:
+        error_texto = (
+            f"{resultado['error']:.6e}"
+        )
 
-            error_texto = "pendiente"
+        if (
+            resultado["orden_observado"]
+            is None
+        ):
+
+            orden_texto = "-"
 
         else:
 
-            error_texto = (
-                f"{resultado['error']:.6e}"
+            orden_texto = (
+                f"{resultado['orden_observado']:.4f}"
             )
 
         print(
             f"{resultado['metodo']:<18}"
-            f"{resultado['h']:<12.5f}"
-            f"{resultado['N']:<10d}"
-            f"{error_texto:<18}"
-            f"{resultado['tiempo']:<16.6f}"
-            f"{resultado['I_max']:<15.6f}"
+            f"{resultado['h']:<11.5f}"
+            f"{resultado['N']:<9d}"
+            f"{error_texto:<17}"
+            f"{orden_texto:<11}"
+            f"{resultado['tiempo']:<15.6f}"
+            f"{resultado['I_max']:<14.6f}"
             f"{resultado['t_max']:<12.6f}"
         )
 
 
-# Tabla de aproximaciones finales
-
 def imprimir_soluciones_finales(
     resultados
 ):
-    """
-    Imprime las aproximaciones obtenidas en t = TF.
-    """
+    """Imprime las aproximaciones numéricas obtenidas en t = TF."""
 
     print(
-        f"\nAPROXIMACIONES NUMÉRICAS FINALES EN t = {TF}\n"
+        f"\nAPROXIMACIONES NUMÉRICAS "
+        f"FINALES EN t = {TF}\n"
     )
 
     encabezado = (
@@ -325,9 +493,13 @@ def imprimir_soluciones_finales(
         f"{'R(tf)':<16}"
     )
 
-    print(encabezado)
+    print(
+        encabezado
+    )
 
-    print("-" * 105)
+    print(
+        "-" * 94
+    )
 
     for resultado in resultados:
 
@@ -341,14 +513,12 @@ def imprimir_soluciones_finales(
         )
 
 
-# Guardar resultados en CSV
+# Guardar resultados
 
 def guardar_csv(
     resultados
 ):
-    """
-    Guarda los resultados en un archivo CSV.
-    """
+    """Guarda los resultados numéricos en un archivo CSV."""
 
     nombre_archivo = (
         "resultados_experimentos.csv"
@@ -359,6 +529,7 @@ def guardar_csv(
         "h",
         "N",
         "error",
+        "orden_observado",
         "tiempo",
         "I_max",
         "t_max",
@@ -392,15 +563,10 @@ def guardar_csv(
     )
 
 
-# Función para nombres de archivos
-
 def nombre_seguro(
     nombre
 ):
-    """
-    Convierte el nombre de un método en un nombre
-    apropiado para utilizar como archivo.
-    """
+    """Convierte el nombre de un método en un nombre de archivo simple."""
 
     nombre = nombre.lower()
 
@@ -427,7 +593,7 @@ def nombre_seguro(
     return nombre
 
 
-# Gráficas de trayectorias
+# Gráficas
 
 def graficar_trayectorias(
     nombre_metodo,
@@ -435,10 +601,7 @@ def graficar_trayectorias(
     yv,
     h
 ):
-    """
-    Grafica S(t), E(t), I(t) y R(t)
-    para un método numérico.
-    """
+    """Grafica S(t), E(t), I(t) y R(t) para un método."""
 
     plt.figure(
         figsize=(10, 6)
@@ -487,12 +650,9 @@ def graficar_trayectorias(
         True
     )
 
-    nombre = nombre_seguro(
-        nombre_metodo
-    )
-
     archivo = (
-        f"trayectorias_{nombre}.png"
+        f"trayectorias_"
+        f"{nombre_seguro(nombre_metodo)}.png"
     )
 
     plt.tight_layout()
@@ -505,23 +665,28 @@ def graficar_trayectorias(
     plt.close()
 
 
-# Gráfica de infectados
-
 def graficar_infectados(
     soluciones
 ):
-    """
-    Compara la población infectada I(t)
-    para todos los métodos disponibles.
-    """
+    """Compara I(t) entre los tres métodos."""
 
     plt.figure(
         figsize=(10, 6)
     )
 
-    # Traza la línea sólida primero para que los trazos de las demás sigan visibles.
-    estilos = ("-", "--", ":")
-    for (nombre, solucion), estilo in zip(soluciones.items(), estilos):
+    estilos = (
+        "-",
+        "--",
+        ":"
+    )
+
+    for (
+        nombre,
+        solucion
+    ), estilo in zip(
+        soluciones.items(),
+        estilos
+    ):
 
         tv, yv, h = solucion
 
@@ -541,7 +706,8 @@ def graficar_infectados(
     )
 
     plt.title(
-        "Comparación de la población infectada I(t)"
+        "Comparación de la población "
+        "infectada I(t)"
     )
 
     plt.legend()
@@ -560,15 +726,10 @@ def graficar_infectados(
     plt.close()
 
 
-# Gráfica de tiempos de ejecución
-
 def graficar_tiempos(
     resultados
 ):
-    """
-    Compara el tiempo de ejecución para
-    diferentes tamaños de paso.
-    """
+    """Compara el tiempo de ejecución según el tamaño de paso."""
 
     metodos = sorted(
         set(
@@ -615,9 +776,20 @@ def graficar_tiempos(
     plt.xscale(
         "log"
     )
-    # Etiqueta los pasos medidos para facilitar la lectura junto al CSV.
-    plt.xticks(H_VALORES, [f"{paso:g}" for paso in H_VALORES])
-    plt.tick_params(axis="x", which="minor", labelbottom=False)
+
+    plt.xticks(
+        H_VALORES,
+        [
+            f"{paso:g}"
+            for paso in H_VALORES
+        ]
+    )
+
+    plt.tick_params(
+        axis="x",
+        which="minor",
+        labelbottom=False
+    )
 
     plt.xlabel(
         "Tamaño de paso h"
@@ -647,29 +819,15 @@ def graficar_tiempos(
     plt.close()
 
 
-# Gráfica de error
-
 def graficar_errores(
     resultados
 ):
-    """
-    Grafica el error numérico contra el tamaño de paso.
-    Utiliza los errores calculados respecto a la solución de referencia.
-    """
-
-    resultados_error = [
-        resultado
-        for resultado in resultados
-        if resultado["error"] is not None
-    ]
-
-    if len(resultados_error) == 0:
-        return
+    """Grafica el error respecto a la referencia para cada método."""
 
     metodos = sorted(
         set(
             resultado["metodo"]
-            for resultado in resultados_error
+            for resultado in resultados
         )
     )
 
@@ -681,7 +839,7 @@ def graficar_errores(
 
         datos = [
             resultado
-            for resultado in resultados_error
+            for resultado in resultados
             if resultado["metodo"] == metodo
         ]
 
@@ -708,14 +866,31 @@ def graficar_errores(
             label=metodo
         )
 
-    # Etiqueta las mallas comparadas y conserva la escala logarítmica.
-    plt.xticks(H_VALORES, [f"{paso:g}" for paso in H_VALORES])
-    plt.tick_params(axis="x", which="minor", labelbottom=False)
-    plt.xlabel("Tamaño de paso h")
-    plt.ylabel("Error máximo en norma infinito")
+    plt.xticks(
+        H_VALORES,
+        [
+            f"{paso:g}"
+            for paso in H_VALORES
+        ]
+    )
+
+    plt.tick_params(
+        axis="x",
+        which="minor",
+        labelbottom=False
+    )
+
+    plt.xlabel(
+        "Tamaño de paso h"
+    )
+
+    plt.ylabel(
+        "Error máximo en norma infinito"
+    )
 
     plt.title(
-        "Error numérico según el tamaño de paso"
+        "Error numérico según "
+        "el tamaño de paso"
     )
 
     plt.legend()
@@ -738,30 +913,18 @@ def graficar_errores(
 
 if __name__ == "__main__":
 
-    sistema = (
-        crear_sistema_malseirs()
-    )
+    sistema = crear_sistema_malseirs()
 
-    y0 = (
-        condiciones_iniciales_base()
-    )
+    y0 = condiciones_iniciales_base()
 
     resultados = []
 
     soluciones_grafica = {}
 
-
-    # Solución de referencia
-
-    tv_ref, yv_ref = (
-        crear_solucion_referencia(
-            sistema,
-            y0
-        )
+    tv_ref, yv_ref = crear_solucion_referencia(
+        sistema,
+        y0
     )
-
-
-    # Usa los mismos tamaños de paso y la misma referencia para los tres métodos.
 
     metodos = [
         (
@@ -772,35 +935,29 @@ if __name__ == "__main__":
             "Heun",
             heun_sistema
         ),
-        ("RK4", rk4_sistema),
+        (
+            "RK4",
+            rk4_sistema
+        ),
     ]
-
-
-    # Ejecución de los experimentos
 
     for nombre, metodo in metodos:
 
         for h in H_VALORES:
 
-            tv, yv, metricas = (
-                ejecutar_experimento(
-                    nombre,
-                    metodo,
-                    sistema,
-                    y0,
-                    h,
-                    tv_ref,
-                    yv_ref
-                )
+            tv, yv, metricas = ejecutar_experimento(
+                nombre,
+                metodo,
+                sistema,
+                y0,
+                h,
+                tv_ref,
+                yv_ref
             )
 
             resultados.append(
                 metricas
             )
-
-
-            # Se utiliza el menor tamaño de paso
-            # para las gráficas de trayectorias.
 
             if h == H_VALORES[-1]:
 
@@ -812,8 +969,13 @@ if __name__ == "__main__":
                     h
                 )
 
+    calcular_ordenes_observados(
+        resultados
+    )
 
-    # Resultados en consola
+    imprimir_configuracion(
+        y0
+    )
 
     imprimir_tabla(
         resultados
@@ -823,35 +985,9 @@ if __name__ == "__main__":
         resultados
     )
 
-
-    print("\nValores iniciales:")
-
-    print(
-        "[S(0), E(0), I(0), R(0)] =",
-        y0.tolist()
-    )
-
-
-    print(
-        f"\nIntervalo de simulación: "
-        f"[{T0}, {TF}]"
-    )
-
-
-    print(
-        f"Tamaños de paso utilizados: "
-        f"{H_VALORES}"
-    )
-
-
-    # Guardar resultados
-
     guardar_csv(
         resultados
     )
-
-
-    # Gráficas de trayectorias
 
     for nombre, solucion in soluciones_grafica.items():
 
@@ -863,9 +999,6 @@ if __name__ == "__main__":
             yv,
             h
         )
-
-
-    # Gráficas comparativas
 
     graficar_infectados(
         soluciones_grafica
@@ -879,12 +1012,6 @@ if __name__ == "__main__":
         resultados
     )
 
-
-    # Mensaje final
-
     print(
         "\nExperimentos completados."
     )
-
-
-    print("Los máximos de infección se calcularon en los puntos de cada malla.")
