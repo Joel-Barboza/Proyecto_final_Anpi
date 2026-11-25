@@ -3,13 +3,13 @@ Módulo: malseirs.py
 
 Descripción:
 Definición del modelo MalSEIRS aplicado a la propagación de malware
-en redes de computadoras y ejecución de prueba para los métodos
-de Euler explícito y Heun.
+en redes de computadoras y ejecución de prueba para Euler explícito,
+Heun y Runge-Kutta de cuarto orden.
 
 Dependencias:
     - Python 3.x
     - numpy
-    - metodos.py en el mismo directorio
+    - metodos.py
 
 Ejecución:
     python malseirs.py
@@ -17,13 +17,15 @@ Ejecución:
 
 import numpy as np
 
-from metodos import euler_sistema, heun_sistema
+from metodos import (
+    euler_sistema,
+    heun_sistema,
+    rk4_sistema
+)
 
 
 def parametros_malseirs_base() -> dict:
-    """
-    Parámetros base del modelo MalSEIRS.
-    """
+    """Retorna los parámetros base del modelo MalSEIRS."""
 
     return {
         "beta_0": 0.8,
@@ -41,10 +43,7 @@ def parametros_malseirs_base() -> dict:
 
 
 def condiciones_iniciales_base() -> np.ndarray:
-    """
-    Condiciones iniciales:
-    [S(0), E(0), I(0), R(0)].
-    """
+    """Retorna [S(0), E(0), I(0), R(0)]."""
 
     return np.array(
         [30.0, 2.0, 1.0, 0.0],
@@ -54,8 +53,7 @@ def condiciones_iniciales_base() -> np.ndarray:
 
 def crear_sistema_malseirs(params: dict = None):
     """
-    Retorna la función f(t, y) correspondiente al sistema
-    de cuatro EDO del modelo MalSEIRS.
+    Retorna la función f(t, y) del sistema MalSEIRS.
 
     y = [S, E, I, R]
     """
@@ -79,13 +77,19 @@ def crear_sistema_malseirs(params: dict = None):
 
         s_val, e_val, i_val, r_val = y
 
-        beta_t = beta_0 / (1.0 + xi * i_val)
+        beta_t = beta_0 / (
+            1.0 + xi * i_val
+        )
 
-        gamma_t = np.tanh(i_val / c)
+        gamma_t = np.tanh(
+            i_val / c
+        )
 
         omega_t = abs(
             np.exp(-a * t)
-            * np.cos((2.0 * np.pi * t) / m)
+            * np.cos(
+                (2.0 * np.pi * t) / m
+            )
         )
 
         ds_dt = (
@@ -116,29 +120,30 @@ def crear_sistema_malseirs(params: dict = None):
         )
 
         return np.array(
-            [ds_dt, de_dt, di_dt, dr_dt],
+            [
+                ds_dt,
+                de_dt,
+                di_dt,
+                dr_dt
+            ],
             dtype=float
         )
 
     return f
 
 
-if __name__ == "__main__":
+def mostrar_prueba_metodo(
+    nombre,
+    metodo,
+    sistema,
+    t0,
+    tf,
+    y0,
+    n_pasos
+):
+    """Ejecuta una prueba básica de un método."""
 
-    sistema = crear_sistema_malseirs()
-
-    y0 = condiciones_iniciales_base()
-
-    t0 = 0.0
-    tf = 30.0
-    n_pasos = 300
-
-
-    # ========================================================
-    # EULER EXPLICITO
-    # ========================================================
-
-    tv, yv, tiempo = euler_sistema(
+    tv, yv, tiempo = metodo(
         sistema,
         t0,
         tf,
@@ -146,28 +151,39 @@ if __name__ == "__main__":
         n_pasos
     )
 
+    indice_max = int(
+        np.argmax(
+            yv[:, 2]
+        )
+    )
+
     i_max = float(
-        np.max(yv[:, 2])
+        yv[indice_max, 2]
     )
 
     t_max = float(
-        tv[np.argmax(yv[:, 2])]
+        tv[indice_max]
     )
 
-    print("Método: Euler explícito")
+    print(
+        f"\nMétodo: {nombre}"
+    )
 
     print(
-        f"Valores iniciales [S(0), E(0), I(0), R(0)]: "
+        f"Valores iniciales "
+        f"[S(0), E(0), I(0), R(0)]: "
         f"{y0.tolist()}"
     )
 
     print(
-        f"Número de iteraciones (pasos): {n_pasos} "
+        f"Número de iteraciones (pasos): "
+        f"{n_pasos} "
         f"(h = {(tf - t0) / n_pasos:.6f})"
     )
 
     print(
-        f"Aproximación numérica final en t = {tv[-1]:.2f} "
+        f"Aproximación numérica final "
+        f"en t = {tv[-1]:.2f} "
         f"[S, E, I, R]: "
         f"{np.round(yv[-1], 6).tolist()}"
     )
@@ -184,53 +200,39 @@ if __name__ == "__main__":
     )
 
 
-    # ========================================================
-    # HEUN
-    # ========================================================
+if __name__ == "__main__":
 
-    print("\n" + "=" * 60)
+    sistema = crear_sistema_malseirs()
 
-    tv_heun, yv_heun, tiempo_heun = heun_sistema(
-        sistema,
-        t0,
-        tf,
-        y0,
-        n_pasos
-    )
+    y0 = condiciones_iniciales_base()
 
-    i_max_heun = float(
-        np.max(yv_heun[:, 2])
-    )
+    t0 = 0.0
+    tf = 30.0
+    n_pasos = 300
 
-    t_max_heun = float(
-        tv_heun[np.argmax(yv_heun[:, 2])]
-    )
+    metodos = [
+        (
+            "Euler explícito",
+            euler_sistema
+        ),
+        (
+            "Heun",
+            heun_sistema
+        ),
+        (
+            "RK4",
+            rk4_sistema
+        ),
+    ]
 
-    print("Método: Heun")
+    for nombre, metodo in metodos:
 
-    print(
-        f"Valores iniciales [S(0), E(0), I(0), R(0)]: "
-        f"{y0.tolist()}"
-    )
-
-    print(
-        f"Número de iteraciones (pasos): {n_pasos} "
-        f"(h = {(tf - t0) / n_pasos:.6f})"
-    )
-
-    print(
-        f"Aproximación numérica final en t = "
-        f"{tv_heun[-1]:.2f} [S, E, I, R]: "
-        f"{np.round(yv_heun[-1], 6).tolist()}"
-    )
-
-    print(
-        f"Tiempo de ejecución: "
-        f"{tiempo_heun:.6f} s"
-    )
-
-    print(
-        f"Máximo de infectados: "
-        f"I_max = {i_max_heun:.6f} "
-        f"en t_max = {t_max_heun:.4f}"
-    )
+        mostrar_prueba_metodo(
+            nombre,
+            metodo,
+            sistema,
+            t0,
+            tf,
+            y0,
+            n_pasos
+        )
