@@ -1,0 +1,95 @@
+\documentclass[11pt,a4paper]{article}
+% Mantiene la tipografía y los márgenes del informe principal.
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern,amsmath}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\hypersetup{pdftitle={Atributo de Investigación - MalSEIRS}}
+\begin{document}
+
+% Reproduce los datos de la portada de Overleaf.
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+    \centering
+    \vspace*{0.4cm}
+    {\large Instituto Tecnológico de Costa Rica\par}
+    \vspace{1.5cm}
+    {\large Ingeniería en Computadores\par}
+    \vspace{1.5cm}
+    {\large CE-1111 -- Análisis Numérico para Ingeniería\par}
+    \vspace{0.3cm}
+    {\large Proyecto de Investigación\par}
+    \vspace{0.9cm}
+    {\Large\bfseries Atributo de Investigación\par}
+    \vspace{0.6cm}
+    {\large\bfseries Predicción de la dinámica de infección en redes de
+    computadoras ante ataques de malware mediante la solución numérica
+    del modelo MalSEIRS.\par}
+    \vspace{1.5cm}
+    {\large Profesor\par}
+    \vspace{0.3cm}
+    {\large Juan Pablo Soto Quirós\par}
+    \vfill
+    {\large Integrantes\par}
+    \vspace{0.3cm}
+    \begin{tabular}{l@{\quad|\quad}l}
+        Génesis Conejo Montero & gconejo@estudiantec.cr\\[5pt]
+        Aldo Alessandro Bagliano Gómez & abagliano83@estudiantec.cr\\[5pt]
+        Joel David Barboza Picado & joebarboza@estudiantec.cr
+    \end{tabular}
+    \vspace*{1.7cm}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+% Sigue el orden de las cinco preguntas de autoevaluación.
+\section*{Autoevaluación del atributo de Investigación}
+
+\subsection*{(a) Selección del problema aplicado}
+
+Se seleccionó la propagación de malware en redes de computadoras porque estimar la magnitud y el momento del pico de infección permite estudiar el margen de respuesta de un equipo de seguridad. Se tomó como punto de partida el caso base publicado por Martínez Martínez et al. \cite{martinez2021}, que especifica las ecuaciones, los parámetros y las condiciones iniciales del modelo MalSEIRS.
+
+La necesidad de un método numérico se identificó al formular el problema como un sistema de cuatro ecuaciones diferenciales no lineales acopladas. El paso de susceptibles a expuestos depende tanto de $S$ como de $I$, las tasas de infección y recuperación dependen de $I$, y la pérdida de inmunidad varía con el tiempo. Para el caso estudiado no se dispone de una solución cerrada que permita calcular directamente las trayectorias y el pico de infección.
+
+\subsection*{(b) Diseño de la propuesta de investigación}
+
+El estudio se planteó dos objetivos. El primero fue aproximar las trayectorias de susceptibles, expuestos, infectados y recuperados para localizar el pico de infección. El segundo fue comparar la precisión y el costo de los métodos al cambiar el tamaño de paso. Ambos objetivos se plantearon sobre el mismo problema de valor inicial, con $(S,E,I,R)(0)=(30,2,1,0)$ en el intervalo $[0,30]$.
+
+El estudio comparó Euler explícito, Heun y Runge--Kutta clásico de cuarto orden (RK4) porque sus distintos órdenes teóricos y números de evaluaciones por paso permiten estudiar la relación entre precisión y costo \cite{metodos_ode}. La comparación mantuvo fijos los parámetros y las condiciones iniciales y aplicó los mismos tamaños de paso a los tres métodos.
+
+\subsection*{(c) Aplicación de la metodología e implementación}
+
+La implementación utilizó Python con NumPy y reutilizó la misma función para evaluar las cuatro ecuaciones. Se ejecutó cada método con $h=0.1$, $0.05$, $0.025$ y $0.0125$, para un total de doce configuraciones. Se usó RK4 con $h_{\mathrm{ref}}=0.00125$ como referencia numérica. Los puntos de cada malla experimental coinciden con puntos de la referencia, lo que permitió comparar los estados sin interpolar.
+
+El programa registró en un CSV el número de pasos, el tiempo, el error máximo, el valor y el instante del pico de infectados y los estados finales. El programa utilizó Matplotlib para visualizar las trayectorias y comparar la población infectada, los errores y los tiempos.
+
+% Agrupa el análisis de resultados y la validez de las conclusiones.
+\clearpage
+\subsection*{(d) Análisis y comparación de los resultados}
+
+Se midió la precisión con la máxima diferencia absoluta respecto de la referencia, considerando los cuatro compartimentos en todos los puntos comunes. En los dos últimos refinamientos, al dividir $h$ entre dos, los errores disminuyeron por factores cercanos a dos para Euler, cuatro para Heun y dieciséis para RK4. La caída más pronunciada de RK4 entre $h=0.1$ y $0.05$ es consistente con la ubicación de los puntos donde $\omega(t)$ no es derivable. Con $h=0.1$, algunos pasos cruzan esos puntos. En las tres mallas más finas, coinciden con nodos temporales.
+
+Se evaluó la eficiencia mediante el tiempo medido y las evaluaciones del sistema por paso: una para Euler, dos para Heun y cuatro para RK4. A igual paso, Euler fue el más rápido y RK4 obtuvo el menor error. Los tiempos corresponden a una ejecución por configuración. También se comparó por separado cada métrica del pico para evaluar la métrica de interés en el problema de ingeniería.
+
+\subsection*{(e) Conclusiones y validez de los hallazgos}
+
+Los tres métodos situaron el pico cerca de cinco nodos infectados en $t\approx2$. Con $h=0.0125$, los picos sobre la malla difirieron en menos de $0.012$ nodos. RK4 estimó $I_{\max}\approx5.01426$ en $t=2.0125$ y obtuvo un error máximo de $7.48\times10^{-8}$ respecto de la referencia. Para el caso base, la elección del método a ese paso tuvo poco efecto en la estimación del pico, aunque sí produjo diferencias en la precisión de la trayectoria completa.
+
+Se repitió el cálculo de la referencia con $h=0.000625$. La diferencia máxima entre las dos soluciones en los puntos comunes fue de $6.80\times10^{-12}$, más de cuatro órdenes de magnitud por debajo del menor error experimental. La convergencia al refinar las mallas y la coincidencia con el pico aproximado descrito en el artículo \cite{martinez2021} respaldan los resultados para el escenario simulado. Evaluar la capacidad predictiva en una red concreta requeriría contrastar el modelo con observaciones de esa red.
+
+% Documenta las fuentes utilizadas para el modelo y los métodos.
+\begin{thebibliography}{9}
+\bibitem{martinez2021}
+I. Martínez Martínez, A. Florián Quitián, D. Díaz-López, P. Nespoli y
+F. Gómez Mármol, «MalSEIRS: Forecasting Malware Spread Based on
+Compartmental Models in Epidemiology», \textit{Complexity}, vol. 2021,
+art. 5415724, 2021. \url{https://doi.org/10.1155/2021/5415724}
+
+\bibitem{metodos_ode}
+Instituto Tecnológico de Costa Rica, \textit{Métodos iterativos para la
+solución numérica del problema de Cauchy}, material del curso CE-1111, 2026.
+\end{thebibliography}
+\end{document}
