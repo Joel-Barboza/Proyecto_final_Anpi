@@ -14,7 +14,7 @@ Instrucciones de ejecución:
 """
 
 import numpy as np
-from metodos import calcular_error_infinito, euler_sistema
+from metodos import euler_sistema, heun_sistema
 
 
 def parametros_malseirs_base() -> dict:
@@ -57,7 +57,7 @@ def crear_sistema_malseirs(params: dict = None):
     m = params["m"]
 
     def f(t: float, y: np.ndarray) -> np.ndarray:
-        s_val, e_val, i_val, r_val = np.maximum(0.0, y)  # Evita negativos en pasos grandes
+        s_val, e_val, i_val, r_val = y  # Evita negativos en pasos grandes
 
         beta_t = beta_0 / (1.0 + xi * i_val)
         gamma_t = np.tanh(i_val / c)
@@ -80,8 +80,6 @@ if __name__ == "__main__":
     n_pasos = 300
 
     tv, yv, tiempo = euler_sistema(sistema, t0, tf, y0, n_pasos)
-    _, yv_fino, _ = euler_sistema(sistema, t0, tf, y0, n_pasos * 2)
-    error_inf = calcular_error_infinito(yv, yv_fino[::2])  # Compara en los mismos instantes tv
 
     i_max = float(np.max(yv[:, 2]))
     t_max = float(tv[np.argmax(yv[:, 2])])
@@ -90,6 +88,21 @@ if __name__ == "__main__":
     print(f"Valores iniciales [S(0), E(0), I(0), R(0)]: {y0.tolist()}")
     print(f"Número de iteraciones (pasos): {n_pasos} (h = {(tf - t0) / n_pasos:.6f})")
     print(f"Aproximación numérica final en t = {tv[-1]:.2f} [S, E, I, R]: {np.round(yv[-1], 6).tolist()}")
-    print(f"Error (norma infinito vs. Euler con 2x pasos): {error_inf:.6e}")
     print(f"Tiempo de ejecución: {tiempo:.6f} s")
     print(f"Máximo de infectados: I_max = {i_max:.6f} en t_max = {t_max:.4f}")
+    
+    print("\n" + "=" * 60)
+
+tv_heun, yv_heun, tiempo_heun = heun_sistema(
+    sistema, t0, tf, y0, n_pasos
+)
+
+i_max_heun = float(np.max(yv_heun[:, 2]))
+t_max_heun = float(tv_heun[np.argmax(yv_heun[:, 2])])
+
+print("Método: Heun")
+print(f"Valores iniciales [S(0), E(0), I(0), R(0)]: {y0.tolist()}")
+print(f"Número de iteraciones (pasos): {n_pasos} (h = {(tf - t0) / n_pasos:.6f})")
+print(f"Aproximación numérica final en t = {tv_heun[-1]:.2f} [S, E, I, R]: {np.round(yv_heun[-1], 6).tolist()}")
+print(f"Tiempo de ejecución: {tiempo_heun:.6f} s")
+print(f"Máximo de infectados: I_max = {i_max_heun:.6f} en t_max = {t_max_heun:.4f}")

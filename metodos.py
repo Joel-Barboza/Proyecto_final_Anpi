@@ -36,6 +36,37 @@ def euler_sistema(f, a: float, b: float, y0, n_pasos: int):
     return tv, yv, tiempo
 
 
+def heun_sistema(f, a: float, b: float, y0, n_pasos: int):
+    """Resuelve y'(t) = f(t, y) en [a, b] con el método de Heun."""
+
+    if n_pasos < 1:
+        raise ValueError("n_pasos debe ser >= 1.")
+
+    inicio = time.perf_counter()
+
+    y0_arr = np.asarray(y0, dtype=float)
+    h = (b - a) / n_pasos
+
+    tv = np.linspace(a, b, n_pasos + 1)
+    yv = np.zeros((n_pasos + 1, y0_arr.size), dtype=float)
+
+    yv[0] = y0_arr
+
+    for k in range(n_pasos):
+
+        k1 = f(tv[k], yv[k])
+
+        k2 = f(
+            tv[k] + h,
+            yv[k] + h * k1
+        )
+
+        yv[k + 1] = yv[k] + (h / 2) * (k1 + k2)
+
+    tiempo = time.perf_counter() - inicio
+
+    return tv, yv, tiempo
+
 def calcular_error_infinito(y_aprox: np.ndarray, y_ref: np.ndarray) -> float:
     """Error máximo en norma infinito entre dos trayectorias en los mismos instantes."""
     if y_aprox.shape != y_ref.shape:
